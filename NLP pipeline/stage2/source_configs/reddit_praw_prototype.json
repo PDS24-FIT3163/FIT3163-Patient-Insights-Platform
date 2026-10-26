@@ -1,0 +1,17 @@
+{
+  "_comment": "Output of data_collection/reddit_collection.py saved with df.to_csv(). That script doesn't save subreddit, flair or author yet, so subreddit is a constant here and flair is missing.",
+  "name": "reddit_api",
+  "unit": "post",
+  "columns": {
+    "post_id": "post_id",
+    "title": "title",
+    "body": "body",
+    "timestamp": "created_utc"
+  },
+  "constants": {
+    "subreddit": "diabetes"
+  },
+  "timestamp_unit": "s",
+  "id_prefix": "reddit_",
+  "relevance_filter": false
+}

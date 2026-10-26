@@ -1,0 +1,18 @@
+{
+  "_comment": "Reddit archive dumps (Pushshift / Arctic Shift style, one JSON object per line). Decompress .zst first.",
+  "name": "reddit_dump",
+  "format": "jsonl",
+  "unit": "post",
+  "columns": {
+    "post_id": "id",
+    "subreddit": "subreddit",
+    "title": "title",
+    "body": "selftext",
+    "timestamp": "created_utc",
+    "flair": "link_flair_text",
+    "author": "author"
+  },
+  "timestamp_unit": "s",
+  "id_prefix": "reddit_",
+  "relevance_filter": false
+}
