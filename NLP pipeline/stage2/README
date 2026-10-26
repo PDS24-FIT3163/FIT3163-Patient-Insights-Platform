@@ -1,0 +1,68 @@
+PDS-24 — Stage 2: Preprocessing
+
+What this does:
+Takes a raw dump of posts from any source and produces one clean, de-identified table for Stage 3:
+
+    post_id | subreddit | cleaned_text | timestamp | metadata
+
+Steps, in order:
+1. Drop deleted / mod-removed posts, bot posts (AutoModerator) and rows with no ID.
+2. Build the text as title + body, then de-identify: usernames (u/name, @name), emails, URLs and
+   phone numbers become [USER], [EMAIL], [URL], [PHONE]. The author column is never written out.
+   Limitation: names or places typed in the text itself are NOT removed.
+3. Drop posts under MIN_WORDS words, and (optional, per source) posts that don't mention diabetes.
+4. Deduplicate (same ID, or same text after normalising case/punctuation), keeping the earliest copy.
+   This happens before any train/val/test split.
+5. Record diabetes type and length in word pieces (all-mpnet-base-v2 tokenizer) in metadata.
+
+metadata is a JSON string with: source, unit, parent_id, flair, diabetes_type, diabetes_type_source,
+n_words, n_wordpieces. Use expand_metadata() from the script to turn it back into columns.
+
+A <output>_report.json is written next to the output with how many rows each step dropped, the
+diabetes type counts, and the share of posts over 384 word pieces (OPEN decision #7).
+
+
+Setup:
+    py -m pip install pandas
+    py -m pip install transformers      (only needed for word-piece counts; or run with --skip-wordpieces)
+
+
+Run (on the synthetic sample, from this folder):
+    py stage2_preprocessing.py --input sample_data/sample_raw_posts.csv --source-config source_configs/sample.json
+
+Options:
+    --output                  default output/cleaned_posts.csv
+    --diabetes-type-method    flair_then_keywords (default) | keywords | flair | subreddit | none
+    --skip-wordpieces         skip the tokenizer download
+
+
+Input Format / using a different data source:
+The cleaning code never reads source-specific column names. Each source gets a small JSON file in
+source_configs/ that maps its columns onto the standard raw columns:
+
+    post_id (required), subreddit, title, body (at least one of title/body), timestamp, flair, author, parent_id
+
+Source config keys:
+    name              recorded in metadata.source
+    format            csv | jsonl | json | parquet  (optional, otherwise taken from the file extension)
+    unit              "post" or "comment"
+    columns           standard column -> column name in the raw file
+    constants         standard column -> fixed value (e.g. a subreddit name the raw file doesn't include)
+    timestamp_unit    "s" or "ms" for epoch numbers, leave out for date strings
+    id_prefix         added to every post_id so IDs stay unique if sources are merged
+    relevance_filter  true to drop posts that don't mention diabetes (for non-diabetes communities)
+
+Included configs:
+    sample.json                  synthetic test file in sample_data/
+    reddit_praw_prototype.json   output of data_collection/reddit_collection.py saved to CSV
+    reddit_dump_ndjson.json      Pushshift / Arctic Shift style Reddit archive dumps
+
+For a new database: copy one of these, change the column names, run. If the new source has text
+that needs extra cleaning (HTML pages, quoted replies, signatures), add it in deidentify().
+
+
+Still OPEN (not decided by this script, see pds24-handoff.md #10):
+- Which communities count as "Asia-focused".
+- Posts only vs posts + comments (set "unit" and map "parent_id" for comments).
+- Source of diabetes type. Default is flair, then keyword rules; the method used is recorded per post
+  in metadata.diabetes_type_source so it can be changed and re-run.
